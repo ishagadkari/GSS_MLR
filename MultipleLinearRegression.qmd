@@ -1,0 +1,138 @@
+## General Social Survey - highest_year_of_school_completed
+
+```{r}
+library(tidyverse)
+library(Stat2Data)
+library(skimr)
+library(leaps)
+library(ggplot2)
+```
+
+```{r}
+GSS <-read_csv("GSS_clean.csv")
+```
+
+**GSS** stands for General Social Survey.
+
+```{r}
+names(GSS)
+```
+
+**Response Variable:**
+
+highest_year_of_school_completed
+
+**Explanatory Variables:**
+
+1.  highest_year_school_completed_father
+2.  highest_year_school_completed_mother
+3.  born_in_us
+4.  age_of_respondent
+5.  number_of_brothers_and sisters
+6.  respondents_sex
+7.  marital_status
+
+Separating the variables of concern in another dataset:
+
+```{r}
+newGSS <- select(GSS, respondents_sex, highest_year_school_completed_mother, age_of_respondent, marital_status, number_of_brothers_and_sisters, born_in_us, highest_year_school_completed_father, highest_year_of_school_completed)
+```
+
+```{r}
+skim(newGSS)
+summary(newGSS)
+```
+
+There seem to be plenty of NA values. Since I have 2348 observations, I can afford to remove all NA values.
+
+```{r}
+newGSS<- na.omit(newGSS)
+```
+
+I will conduct a backward elimination method to determine which variables I will keep and which ones I will remove. Since there are only 7 variables, I will conduct this manually.
+
+```{r}
+ model<- lm(highest_year_of_school_completed ~ ., data = newGSS)
+ summary(model)
+```
+
+It seems like the model is taking each age under the age_of_respondent variable as a separate category.
+
+```{r}
+summary(newGSS$age_of_respondent)
+
+```
+
+It seems like the entries for age_of_respondent variable are String or character. Therefore, I am converting them to numeric.
+
+```{r}
+newGSS <- newGSS %>%
+  mutate(age_numeric = parse_number(age_of_respondent))
+```
+
+To check:
+
+```{r}
+summary(newGSS$age_numeric)
+```
+
+It has now been converted to numeric.
+
+```{r}
+model1<- lm(highest_year_of_school_completed ~ respondents_sex+ highest_year_school_completed_mother+ number_of_brothers_and_sisters + marital_status + born_in_us + highest_year_school_completed_father + age_numeric,  data = newGSS)
+ summary(model1)
+```
+
+It seems like marital_status is not a good predictor of highest_year_of_school_completed, thus, I am eliminating that.
+
+```{r}
+model2<- lm(highest_year_of_school_completed ~ respondents_sex+ highest_year_school_completed_mother+ number_of_brothers_and_sisters +  born_in_us + highest_year_school_completed_father + age_numeric,  data = newGSS)
+ summary(model2)
+```
+
+It seems like born_in_us is not a good predictor, and neither is respondents_sex, however, born_in_us has a larger p-value, thus I will eliminate that first.
+
+```{r}
+model3<- lm(highest_year_of_school_completed ~ respondents_sex+ highest_year_school_completed_mother+ number_of_brothers_and_sisters  + highest_year_school_completed_father + age_numeric,  data = newGSS)
+ summary(model3)
+```
+
+It seems like respondents_sex is the only non-significant predictor that needs to be eliminated. Since all these eliminations does not impact the adjusted R\^2 greatly, I don't think there is any problem in eliminating them.
+
+```{r}
+model3<- lm(highest_year_of_school_completed ~ highest_year_school_completed_mother+ number_of_brothers_and_sisters  + highest_year_school_completed_father + age_numeric,  data = newGSS)
+ summary(model3)
+```
+
+It seems like all the variables now are significant predictors of highest_year_of_school_completed.
+
+Checking the overall age distribution in the dataset.
+
+```{r}
+summary(newGSS$age_numeric)
+summary(newGSS$age_numeric < 25)
+```
+
+The age of the respondents ranges between 18 to 89 and there are 130 individuals with age under 25.
+
+Equation:
+
+ŷ = 9.25334 + 0.15343(highest_year_school_completed_mother) - 0.12340 (number_of_brothers_and_sisters ) + 0.20069 (highest_year_school_completed_father) + 0.02315(age_numeric).
+
+where ŷ is highest_year_of_school_completed-hat.
+
+Checking whether or not the conditions for inference are being met.
+
+1.  Equality of Variance and Linearity:
+
+```{r}
+plot(model3, which = 1)
+```
+
+2.  Normality:
+
+    ```{r}
+    plot(model3, which = 2)
+    ```
+
+#### 
